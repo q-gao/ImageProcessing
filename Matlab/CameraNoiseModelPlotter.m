@@ -1,0 +1,3 @@
+classdef CameraNoiseModelPlotter < handle
+
+end

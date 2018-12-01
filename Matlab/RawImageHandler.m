@@ -113,8 +113,8 @@ classdef RawImageHandler < handle
             if s(1) * s(2) ~= w * h
                 fprintf('Error: read size %dx%d != %dx%d\n', s(1), s(2), w, h);
             end
-            fclose(fh);
-        end
+            fclose(fh);            
+        end        
         function [BayerImage, Label] = LoadDng(FullDngPath)
             % see https://blogs.mathworks.com/steve/2011/03/08/tips-for-reading-a-camera-raw-file-into-matlab/
             warning off MATLAB:tifflib:TIFFReadDirectory:libraryWarning;
