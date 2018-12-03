@@ -11,8 +11,8 @@ classdef PlotImageUtil < handle
                 imshow(cImgs{iid}, valueRange, 'border', 'tight');
             end
         end
-        function PlotGridInCurAxis( numCellLine, gridColor)
-            if nargin < 3
+        function PlotGridInCurAxis_2( numCellLine, gridColor)
+            if nargin < 2
                 gridColor = 'r';
             end
             limRow = ylim( gca() ); cellSizeRow = (limRow(2) - limRow(1)) / numCellLine;
@@ -22,5 +22,16 @@ classdef PlotImageUtil < handle
             plot(X, Y, gridColor);
             plot(Y, X, gridColor);
         end
+        function PlotGridInCurAxis( cellSizeRow, cellSizeCol, gridColor)
+            if nargin < 3
+                gridColor = 'r';
+            end
+            limRow = ylim( gca() ); 
+            limCol = xlim( gca() ); 
+            [Y, X] = meshgrid( limRow(1):cellSizeRow:limRow(2), limCol(1):cellSizeCol:limCol(2) );
+            hold on;
+            plot(X, Y, gridColor);
+            plot(Y, X, gridColor);
+        end        
     end
 end

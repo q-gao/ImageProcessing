@@ -7,7 +7,16 @@ classdef RawImageHandler < handle
             info{numDng} = [];
             for i = numDng:-1:1
                 fprintf('Loading %s\n', dngFile(i).name);
-                [bayer{i}, info{i}] = RawImageHandler.LoadDng(dngFile(i).name);
+                [bayer{i}, info{i}] = RawImageHandler.LoadDng([dngDir '\' dngFile(i).name]);
+            end            
+        end
+        function bayer = LoadRawInDir(dngDir, w, h)
+            dngFile = dir( [dngDir '\*.raw']);
+            numDng = length(dngFile);
+            bayer{numDng} = [];
+            for i = numDng:-1:1
+                fprintf('Loading %s\n', dngFile(i).name);
+                bayer{i} = RawImageHandler.LoadRaw([dngDir '\' dngFile(i).name], w, h);
             end            
         end
         function VisualizeDngStat( bayers, infos )
