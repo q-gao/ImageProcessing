@@ -19,7 +19,7 @@ def DomasicRawImage(dngTemplate, rawFile):
                 raw <<= (10-nbits);
         raw = raw.reshape(dng.sizes.raw_height, dng.sizes.raw_width)
         np.copyto(dngTemplate.raw_image, raw)
-        rgb = dngTemplate.postprocess()
+        rgb = dngTemplate.postprocess(no_auto_bright=True)
         return rgb
     except:
         return None
