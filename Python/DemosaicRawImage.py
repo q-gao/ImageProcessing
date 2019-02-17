@@ -24,20 +24,29 @@ def DomasicRawImage(dngTemplate, rawFile):
     except:
         return None
 
-import sys
 if __name__ == '__main__':
-    if len(sys.argv) < 3:
-        print('Usage: DomasicRawImage.py <dngTemplateFile> <rawFile> [<rawFile>, ...]')
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("dng_tmplt_file", 
+                        help="DNG template file")
+    parser.add_argument("raw_files", nargs='+',
+                        help="list of raw files")    
+    parser.add_argument("-t", "--img_type", default='tiff',
+                        help="output image type, e.g., jpg, tiff and etc. Default tiff")    
+    args = parser.parse_args()	
 
+    import glob
     try:
-        dng = rawpy.imread(sys.argv[1])
+        dng = rawpy.imread(args.dng_tmplt_file)
+        imgFileSuffix = '.' + args.img_type
 
-        for i in xrange(2, len(sys.argv) ):
-            rgb = DomasicRawImage(dng, sys.argv[i])
-            tiffFile = sys.argv[i]+ '.tiff'
-            print('Saving demosaiced {} to {} ...\n'.format( sys.argv[i], tiffFile))
-            imageio.imsave(tiffFile, rgb)
+        for rfs in args.raw_files:
+        	for rawFile in glob.glob(rfs):
+	            rgb = DomasicRawImage(dng, rawFile)
+	            imgFile = rawFile + imgFileSuffix
+	            print('Saving demosaiced {} to {} ...\n'.format( rawFile, imgFile))
+	            imageio.imsave(imgFile, rgb)
 
         dng.close();
-    except:
-        print('FAILED top load DNG or raw file\n')
+    except Exception as e:
+        print(e)
