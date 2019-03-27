@@ -1,23 +1,26 @@
 classdef RawImageHandler < handle
     methods (Static)
-        function [bayer, info] = LoadDngInDir(dngDir)
-            dngFile = dir( [dngDir '\*.dng']);
-            numDng = length(dngFile);
-            bayer{numDng} = [];
-            info{numDng} = [];
-            for i = numDng:-1:1
-                fprintf('Loading %s\n', dngFile(i).name);
-                [bayer{i}, info{i}] = RawImageHandler.LoadDng([dngDir '\' dngFile(i).name]);
-            end            
-        end
-        function bayer = LoadRawInDir(dngDir, w, h)
-            dngFile = dir( [dngDir '\*.raw']);
-            numDng = length(dngFile);
-            bayer{numDng} = [];
-            for i = numDng:-1:1
-                fprintf('Loading %s\n', dngFile(i).name);
-                bayer{i} = RawImageHandler.LoadRaw([dngDir '\' dngFile(i).name], w, h);
-            end            
+        % Image stat visualization
+        function ShowRggbHist(bayer, valRange)
+            if nargin < 2
+                valRange(2) = max(bayer(:));
+                valRange(1) = min(bayer(:));
+            end
+            figure;
+            idx = 1;
+            for r = 1:2
+                for c = 1:2
+                    subplot(2,2, idx);
+                    a = bayer(r:2:end, c:2:end);
+                    a = a( a<= valRange(2));
+                    a = a( a>= valRange(1));
+                    histogram(a(:));
+                    xlim(valRange);
+                    title( sprintf('Mean, Std = %f, %f', mean(a(:)), sqrt(var( double(a(:)))) ));
+                    grid minor;
+                    idx = idx + 1;
+                end
+            end
         end
         function VisualizeDngStat( bayers, infos )
             numDng = length(bayers);
@@ -47,6 +50,22 @@ classdef RawImageHandler < handle
                 plot(sortedISOs, vars(i,:), colors(i));
             end
         end
+        function ShowRggbAsSequence(bayer)
+            figure;
+            idx = 1;
+            color = ['r', 'g', 'c', 'b'];
+            for r = 1:2
+                for c = 1:2
+                    subplot(2,2, idx);
+                    a = bayer(r:2:end, c:2:end);
+                    plot(a(:), color(idx));
+                    idx = idx + 1;
+                end
+            end
+        end                
+        
+        % Bad pixel detection
+        %-------------------------------------------------
         function badpixel_mask = DetectBadPixel(bayer, maxVal)
             if nargin < 2
                 maxVal = 1023;
@@ -110,6 +129,27 @@ classdef RawImageHandler < handle
             
             neighborMin3x3 = min(temp_mat, [], 3);
         end        
+        % Load image
+        %------------------------------------------------------------
+        function [bayer, info] = LoadDngInDir(dngDir)
+            dngFile = dir( [dngDir '\*.dng']);
+            numDng = length(dngFile);
+            bayer{numDng} = [];
+            info{numDng} = [];
+            for i = numDng:-1:1
+                fprintf('Loading %s\n', dngFile(i).name);
+                [bayer{i}, info{i}] = RawImageHandler.LoadDng([dngDir '\' dngFile(i).name]);
+            end            
+        end
+        function bayer = LoadRawInDir(dngDir, w, h)
+            dngFile = dir( [dngDir '\*.raw']);
+            numDng = length(dngFile);
+            bayer{numDng} = [];
+            for i = numDng:-1:1
+                fprintf('Loading %s\n', dngFile(i).name);
+                bayer{i} = RawImageHandler.LoadRaw([dngDir '\' dngFile(i).name], w, h);
+            end            
+        end        
         function bayer = LoadRaw(rawFile, w, h)
             fh = fopen(rawFile, 'rb');
             if -1== fh
@@ -142,6 +182,10 @@ classdef RawImageHandler < handle
             Label.BayerBpp = 16;
             Label.Type = 'Bayer';
             Label.IsBigEndian = 0 ;
+            
+            %XYZ-to-camera matrix in the meta info.ColorMatrix2
+            % These entries fill the transformation matrix in a C row-wise manner,
+            % not MATLAB column-wise
 
             BayerPattern = Info.UnknownTags(2).Value;
             % BayerPattern = Info.SubIFDs{1}.Value;
@@ -160,40 +204,6 @@ classdef RawImageHandler < handle
             end
 
             Label.Info = Info;            
-        end
-        function ShowRggbHist(bayer, valRange)
-            if nargin < 2
-                valRange(2) = max(bayer(:));
-                valRange(1) = min(bayer(:));
-            end
-            figure;
-            idx = 1;
-            for r = 1:2
-                for c = 1:2
-                    subplot(2,2, idx);
-                    a = bayer(r:2:end, c:2:end);
-                    a = a( a<= valRange(2));
-                    a = a( a>= valRange(1));
-                    histogram(a(:));
-                    xlim(valRange);
-                    title( sprintf('Mean, Std = %f, %f', mean(a(:)), sqrt(var( double(a(:)))) ));
-                    grid minor;
-                    idx = idx + 1;
-                end
-            end
-        end
-        function ShowRggbAsSequence(bayer)
-            figure;
-            idx = 1;
-            color = ['r', 'g', 'c', 'b'];
-            for r = 1:2
-                for c = 1:2
-                    subplot(2,2, idx);
-                    a = bayer(r:2:end, c:2:end);
-                    plot(a(:), color(idx));
-                    idx = idx + 1;
-                end
-            end
         end        
     end
 end

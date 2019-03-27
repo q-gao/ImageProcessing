@@ -264,11 +264,13 @@ classdef ExposureFusion < handle % This is critical see explanation in Run()
             for lvl = nl - 1: -1: 1
                 %dim = size( pyrLap{lvl} );
                 %g = upsample(g, [mod(dim(1),2), mod(dim(2),2)] ) + pyrLap{lvl};
-                g = upsample(g, 2 * size(g) - size(pyrLap{lvl}) ) + pyrLap{lvl};
+                up = upsample(g, 2 * size(g) - size(pyrLap{lvl}) );
+                g =  up + pyrLap{lvl};
                 
                 fprintf(' G_%d min, max= %f, %f before clipping negative values\n', lvl, min(g(:)), max(g(:)));
-                g(g < 0) = 0;  % IMPORTANT to avoid artifact
-                g(g > maxVal) = maxVal;
+%                 mask = g < 0;
+%                 g(mask) = 0; % up(mask);  % IMPORTANT to avoid artifact
+%                 g(g > maxVal) = maxVal;
             end
         end        
         function pyrBlended = BlendPyramids( cPyr, cPyrW )
