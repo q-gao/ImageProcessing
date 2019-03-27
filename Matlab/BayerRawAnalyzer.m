@@ -1,5 +1,19 @@
 classdef BayerRawAnalyzer < handle
     methods(Static)
+        %% Demosaic to sRGB
+        function srgb = Bayer10bits2sRGB(bayer)
+            % demosaic algo:
+            % https://www.mathworks.com/help/images/ref/demosaic.html
+            % [1] Malvar, H.S., L. He, and R. Cutler, 
+            %   High quality linear interpolation for demosaicing of Bayer-patterned color images. 
+            %   ICASPP, Volume 34, Issue 11, pp. 2274-2282, May 2004.
+            srgb = lin2rgb( ... % 
+                        ... % demosaic output has the same type as input
+                        demosaic(uint16(bayer * 64), 'rggb'), ... % to uint16 first
+                        'OutputType','double'... % output [0 1]
+                    );
+        end
+        %%
         function cChDatas = SeparateCh(bayer)
             % cChDatas{i} is i-th channel
             for i = 3:-1:0
@@ -66,9 +80,14 @@ classdef BayerRawAnalyzer < handle
         end
         %% RGGB to Gray
         function gray = Rggb2Gray_Simple(rggb)
-           gray = 0.25* rggb(1:2:end,1:2:end)...
-                + 0.25 * (rggb(1:2:end,2:2:end) + rggb(2:2:end,1:2:end))...
-                + 0.25 * rggb(2:2:end,2:2:end); 
+            % linear RGB to lum
+           gray = 0.2126* rggb(1:2:end,1:2:end)...
+                + 0.3576 * (rggb(1:2:end,2:2:end) + rggb(2:2:end,1:2:end))...
+                + 0.0722 * rggb(2:2:end,2:2:end);             
+%            % sRGB to Lum
+%            gray = 0.25* rggb(1:2:end,1:2:end)...
+%                 + 0.25 * (rggb(1:2:end,2:2:end) + rggb(2:2:end,1:2:end))...
+%                 + 0.25 * rggb(2:2:end,2:2:end); 
         end
         function gray = Rggb2Gray(rggb)
 %            gray = 0.2990 * rggb(1:2:end,1:2:end)...
