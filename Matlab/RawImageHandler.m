@@ -124,7 +124,7 @@ classdef RawImageHandler < handle
             end
             fclose(fh);            
         end        
-        function [BayerImage, Label] = LoadDng(FullDngPath)
+        function [BayerImage, Info, Label] = LoadDng(FullDngPath)            
             % see https://blogs.mathworks.com/steve/2011/03/08/tips-for-reading-a-camera-raw-file-into-matlab/
             warning off MATLAB:tifflib:TIFFReadDirectory:libraryWarning;
             t = Tiff(FullDngPath,'r');
@@ -133,7 +133,7 @@ classdef RawImageHandler < handle
             BayerImage = read(t);
             close(t);
 
-            Info = imfinfo( FullDngPath );
+            Info = imfinfo( FullDngPath ); % exif info
 
             Label.WBC = 1./Info.AsShotNeutral;
 
@@ -160,6 +160,51 @@ classdef RawImageHandler < handle
             end
 
             Label.Info = Info;            
+        end
+        function cam2sRGB_matrix = CalcCam2sRGBMatrix( exif )
+            % see Adobe DNG spec: https://www.adobe.com/content/dam/acom/en/products/photoshop/pdfs/dng_spec_1.4.0.0.pdf
+            %  Chapter 6: Mapping Camera Color Space to CIE XYZ Color Space
+            sRGB2xyz = [0.4124564 0.3575761 0.1804375; ...
+                        0.2126729 0.7151522 0.0721750; ...
+                        0.0193339 0.1191920 0.9503041 ...
+                        ];
+            xyz2cam = reshape(exif.ColorMatrix2, 3, 3)';
+            cam2sRGB_matrix = inv( xyz2cam * sRGB2xyz );
+            
+            % assume this is for white-balanced RGB, then
+            %  [1 1 1]' = cam2sRGB_matrix * [1 1 1]'
+            % i.e., white [1 1 1] will still be white
+            % This requires normalizing each row
+            cam2sRGB_matrix = cam2sRGB_matrix ./ repmat(cam2sRGB_matrix * [ 1 1 1]', 1, 3);            
+        end
+        function colormask = WhiteBlanceMask(m,n,wbmults,align)
+            % COLORMASK = wbmask(M,N,WBMULTS,ALIGN)
+            %
+            % Makes a white-balance multiplicative mask for an image of size m-by-n
+            % with RGB while balance multipliers WBMULTS = [R_scale G_scale B_scale].
+            % ALIGN is string indicating Bayer arrangement: ¡¯rggb¡¯,¡¯gbrg¡¯,¡¯grbg¡¯,¡¯bggr¡¯
+            % 
+            % Example:
+            %   wb_multipliers = (meta_info.AsShotNeutral).?-1;
+            %   wb_multipliers = wb_multipliers/wb_multipliers(2);
+            %   mask = WhiteBlanceMask(size(lin_bayer,1),size(lin_bayer,2),wb_multipliers,¡¯rggb¡¯);
+            %   balanced_bayer = lin_bayer .* mask;            
+            
+            colormask = wbmults(2)*ones(m,n); %Initialize to all green values
+            switch align
+                case 'rggb'
+                colormask(1:2:end,1:2:end) = wbmults(1); %r
+                colormask(2:2:end,2:2:end) = wbmults(3); %b
+                case 'bggr'
+                colormask(2:2:end,2:2:end) = wbmults(1); %r
+                colormask(1:2:end,1:2:end) = wbmults(3); %b
+                case 'grbg'
+                colormask(1:2:end,2:2:end) = wbmults(1); %r
+                colormask(1:2:end,2:2:end) = wbmults(3); %b
+                case 'gbrg'
+                colormask(2:2:end,1:2:end) = wbmults(1); %r
+                colormask(1:2:end,2:2:end) = wbmults(3); %b
+            end
         end
         function ShowRggbHist(bayer, valRange)
             if nargin < 2
