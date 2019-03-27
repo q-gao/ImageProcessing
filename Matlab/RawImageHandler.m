@@ -1,27 +1,5 @@
 classdef RawImageHandler < handle
     methods (Static)
-        % Image stat visualization
-        function ShowRggbHist(bayer, valRange)
-            if nargin < 2
-                valRange(2) = max(bayer(:));
-                valRange(1) = min(bayer(:));
-            end
-            figure;
-            idx = 1;
-            for r = 1:2
-                for c = 1:2
-                    subplot(2,2, idx);
-                    a = bayer(r:2:end, c:2:end);
-                    a = a( a<= valRange(2));
-                    a = a( a>= valRange(1));
-                    histogram(a(:));
-                    xlim(valRange);
-                    title( sprintf('Mean, Std = %f, %f', mean(a(:)), sqrt(var( double(a(:)))) ));
-                    grid minor;
-                    idx = idx + 1;
-                end
-            end
-        end
         function VisualizeDngStat( bayers, infos )
             numDng = length(bayers);
             for i = numDng:-1:1
@@ -49,21 +27,7 @@ classdef RawImageHandler < handle
             for i = 1:4
                 plot(sortedISOs, vars(i,:), colors(i));
             end
-        end
-        function ShowRggbAsSequence(bayer)
-            figure;
-            idx = 1;
-            color = ['r', 'g', 'c', 'b'];
-            for r = 1:2
-                for c = 1:2
-                    subplot(2,2, idx);
-                    a = bayer(r:2:end, c:2:end);
-                    plot(a(:), color(idx));
-                    idx = idx + 1;
-                end
-            end
-        end                
-        
+        end       
         % Bad pixel detection
         %-------------------------------------------------
         function badpixel_mask = DetectBadPixel(bayer, maxVal)
@@ -173,7 +137,7 @@ classdef RawImageHandler < handle
             BayerImage = read(t);
             close(t);
 
-
+            Info = imfinfo(FullDngPath);
             Label.WBC = 1./Info.AsShotNeutral;
 
             Label.Width  = Info.Width;
@@ -249,6 +213,7 @@ classdef RawImageHandler < handle
                 colormask(1:2:end,2:2:end) = wbmults(3); %b
             end
         end
+        % Image stat visualization       
         function ShowRggbHist(bayer, valRange)
             if nargin < 2
                 valRange(2) = max(bayer(:));
