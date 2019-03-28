@@ -168,6 +168,15 @@ classdef RawImageHandler < handle
 
             Label.Info = Info;            
         end
+        function wbRggb = WhiteBalanceRggb( rggb, exif)
+            wbMulti = exif.AsShotNeutral .^-1;
+            wbMulti = wbMulti / wbMulti(2);  % Green should be 1
+            wbRggb = double(rggb) .* RawImageHandler.WhiteBlanceMask(...
+                                size(rggb,1),size(rggb,2), ...
+                                wbMulti, 'rggb' ...
+                            );
+        end
+        
         function cam2sRGB_matrix = CalcCam2sRGBMatrix( exif )
             % see Adobe DNG spec: https://www.adobe.com/content/dam/acom/en/products/photoshop/pdfs/dng_spec_1.4.0.0.pdf
             %  Chapter 6: Mapping Camera Color Space to CIE XYZ Color Space

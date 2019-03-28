@@ -85,21 +85,21 @@ classdef ExposureFusion < handle % This is critical see explanation in Run()
                     for imgIdx = 1: numImgs
                         cLapPyrs{imgIdx}{obj.m_numPyrLevels} = [];
 
-                        cLapPyrs{imgIdx}{1} = cRggbs{imgIdx}(tx:2:end, ty:2:end);
+                        cLapPyrs{imgIdx}{1} = int16(cRggbs{imgIdx}(tx:2:end, ty:2:end));
                         for i = 2: obj.m_numPyrLevels
-                            cLapPyrs{imgIdx}{i} = downsample( cLapPyrs{imgIdx}{i-1});             
+                            cLapPyrs{imgIdx}{i} = int16(downsample( cLapPyrs{imgIdx}{i-1}));             
                             % MATLAB uses a system commonly called "copy-on-write" to avoid making a copy 
                             % of the input argument inside the function workspace until or unless you modify the input argument
                             % see https://www.mathworks.com/matlabcentral/answers/152-can-matlab-pass-by-reference
                             cLapPyrs{imgIdx}{i-1} = cLapPyrs{imgIdx}{i-1} - ...
-                                                    upsample(cLapPyrs{imgIdx}{i},...
+                                                    int16(upsample(cLapPyrs{imgIdx}{i},...
                                                         2 * size(cLapPyrs{imgIdx}{i}) - size(cLapPyrs{imgIdx}{i-1})...
-                                                    ) ;
+                                                    )) ;
                         end                        
                     end
 %                     lapPyrBlended = obj.WAvgLapPyrd(cLapPyrs, obj.m_cPyrExp);
                     lapPyrBlended = ExposureFusion.BlendPyramids( cLapPyrs, obj.m_cPyrExp );
-                    out(tx:2:end, ty:2:end) = ExposureFusion.CollapseLapPyr(lapPyrBlended);
+                    out(tx:2:end, ty:2:end) = uint16( ExposureFusion.CollapseLapPyr(lapPyrBlended) );
                     
                 end                
             end
@@ -133,20 +133,25 @@ classdef ExposureFusion < handle % This is critical see explanation in Run()
             
             pyrExpo{ obj.m_numPyrLevels } = [];
             
-            init = 0;
-            for ty = 1 : 2
-                for tx = 1: 2
-                    D = double(rggb(tx:2:end, ty:2:end)) / maxVal - c;
-                    v = 2 * sigma * sigma;
-                    if ~init
-                        pyrExpo{1} = exp( - D .* D ./ v );
-                        init = 1;
-                    else
-                        pyrExpo{1} = pyrExpo{1} .* exp( - D .* D ./ v );
-                    end
-                end
-            end
-            
+%             init = 0;
+%             for ty = 1 : 2
+%                 for tx = 1: 2
+%                     D = double(rggb(tx:2:end, ty:2:end)) / maxVal - c;
+%                     v = 2 * sigma * sigma;
+%                     if ~init
+%                         pyrExpo{1} = exp( - D .* D ./ v );
+%                         init = 1;
+%                     else
+%                         pyrExpo{1} = pyrExpo{1} .* exp( - D .* D ./ v );
+%                     end
+%                 end
+%             end
+
+            g = BayerRawAnalyzer.Rggb2Gray( rggb );
+            D = double(g) / maxVal - c;
+            v = 2 * sigma * sigma;
+            pyrExpo{1} = exp( - D .* D ./ v );
+                        
             for lvl = 2: obj.m_numPyrLevels
                 pyrExpo{lvl} = downsample( pyrExpo{lvl-1} );
             end
@@ -161,8 +166,13 @@ classdef ExposureFusion < handle % This is critical see explanation in Run()
             obj.m_ccImgLapPyr{ numImgs } = {};
             obj.m_cPyrExp{ numImgs } = {};
             for i = 1: numImgs
-                [obj.m_ccImgLapPyr{i}, obj.m_cPyrExp{i}] = ...
-                    obj.BuildLapAndExposednessPyramidFromYFile( varargin{i} );
+                if ischar(varargin{i})
+                    [obj.m_ccImgLapPyr{i}, obj.m_cPyrExp{i}] = ...
+                        obj.BuildLapAndExposednessPyramidFromYFile( varargin{i} );
+                else
+                    [obj.m_ccImgLapPyr{i}, obj.m_cPyrExp{i}] = ...
+                        obj.BuildLapAndExposednessPyramidFromY( varargin{i} );                    
+                end
             end
             
 %             for i = 1: numImgs
@@ -224,14 +234,28 @@ classdef ExposureFusion < handle % This is critical see explanation in Run()
             end
         end
         function [pyr, pyrExposedness] = BuildLapAndExposednessPyramidFromYFile(obj, yfileName)
-%             Y = LoadYFromYUV420File_10bit( yfileName, obj.m_imgWidth, obj.m_imgHeight);            
-%             pyr = laplacian_pyramid(Y, obj.m_numPyrLevels);
+            Y = LoadYFromYUV420File_10bit( yfileName, obj.m_imgWidth, obj.m_imgHeight);
+            [pyr, pyrExposedness] = obj.BuildLapAndExposednessPyramidFromY(Y);
+%             pyr{obj.m_numPyrLevels} = []; % pre-allocate memeory
+%             
+%             % load as double
+%             pyr{1} = LoadYFromYUV420File_10bit( yfileName, obj.m_imgWidth, obj.m_imgHeight);
+% 
+%             pyrExposedness=obj.BuildExposednessPyramid( pyr{1} );
+%             
+%             for i = 2: obj.m_numPyrLevels
+%                 pyr{i} = downsample( pyr{i-1});             
+%                 % MATLAB uses a system commonly called "copy-on-write" to avoid making a copy 
+%                 % of the input argument inside the function workspace until or unless you modify the input argument
+%                 % see https://www.mathworks.com/matlabcentral/answers/152-can-matlab-pass-by-reference
+%                 pyr{i-1} = pyr{i-1} - upsample(pyr{i}, 2 * size(pyr{i}) - size(pyr{i-1}) ) ;
+%             end
+        end
+        function [pyr, pyrExposedness] = BuildLapAndExposednessPyramidFromY(obj, Y)
             pyr{obj.m_numPyrLevels} = []; % pre-allocate memeory
             
-            % load as double
-            pyr{1} = LoadYFromYUV420File_10bit( yfileName, obj.m_imgWidth, obj.m_imgHeight);
-
-            pyrExposedness=obj.BuildExposednessPyramid( pyr{1} );
+            pyr{1} = double(Y);
+            pyrExposedness=obj.BuildExposednessPyramid( double(Y) );
             
             for i = 2: obj.m_numPyrLevels
                 pyr{i} = downsample( pyr{i-1});             
@@ -239,14 +263,14 @@ classdef ExposureFusion < handle % This is critical see explanation in Run()
                 % of the input argument inside the function workspace until or unless you modify the input argument
                 % see https://www.mathworks.com/matlabcentral/answers/152-can-matlab-pass-by-reference
                 pyr{i-1} = pyr{i-1} - upsample(pyr{i}, 2 * size(pyr{i}) - size(pyr{i-1}) ) ;
-            end
+            end            
         end
         function pyrExpo = BuildExposednessPyramid(obj, Y)
             pyrExpo{ obj.m_numPyrLevels } = [];
             
             c = 0.5;
             sigma = 0.2;
-            D = Y / 1023 - c;
+            D = double(Y) / 1023 - c;
             v = 2 * sigma * sigma;
             pyrExpo{1} = exp( - D .* D ./ v );
             
@@ -278,13 +302,13 @@ classdef ExposureFusion < handle % This is critical see explanation in Run()
             numLvl = length( cPyr{1} );
             numImg = length( cPyr );
             for lvl = numLvl: -1: 1
-                pyrBlended{ lvl } = cPyr{1}{lvl} .* cPyrW{1}{lvl};
+                pyrBlended{ lvl } = double(cPyr{1}{lvl}) .* cPyrW{1}{lvl};
                 pyrWSum{ lvl } = cPyrW{1}{lvl};
             end
             
             for i = 2: numImg
                 for lvl = numLvl: -1: 1
-                    pyrBlended{ lvl } = pyrBlended{ lvl } + cPyr{i}{lvl} .* cPyrW{i}{lvl};
+                    pyrBlended{ lvl } = pyrBlended{ lvl } + double(cPyr{i}{lvl}) .* cPyrW{i}{lvl};
                     pyrWSum{ lvl } = pyrWSum{ lvl } + cPyrW{i}{lvl};
                 end            
             end

@@ -95,9 +95,10 @@ classdef BayerRawAnalyzer < handle
 %                 + 0.1140 * rggb(2:2:end,2:2:end); 
            % https://www.wikiwand.com/en/Grayscale
            % linear sRGB to linear gray
-           gray = 0.2126 * rggb(1:2:end,1:2:end)...
-                + 0.3576 * (rggb(1:2:end,2:2:end) + rggb(2:2:end,1:2:end))...
-                + 0.0722 * rggb(2:2:end,2:2:end);            
+           % NOTE: 0.2 * uint16(1) = 0 as it must be uint16
+           gray = 0.2126 * double(rggb(1:2:end,1:2:end))...
+                + 0.3576 * double(rggb(1:2:end,2:2:end) + rggb(2:2:end,1:2:end))...
+                + 0.0722 * double(rggb(2:2:end,2:2:end));            
         end
         
     end
