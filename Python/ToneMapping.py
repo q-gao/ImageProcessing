@@ -2,41 +2,55 @@
 import cv2
 import numpy as np
 
-def LutToneRgb(rgb, lut):
-#     n = lut.shape[0]
-#     uvRatio = np.float64(np.sum(lut)) / np.float64( n * (n-1) /2)
-#     yuv = cv2.cvtColor(rgb, cv2.COLOR_RGB2YUV)
-#     # LUT Map numpy matrix: 
-#     # https://stackoverflow.com/questions/14448763/is-there-a-convenient-way-to-apply-a-lookup-table-to-a-large-array-in-numpy
-#     y, u, v = cv2.split(yuv)  # costly operation
-    
-#     y_mapped = lut[y]
-    
-#     # handle divide by zero
-#     y_mapped[y==0] = 1    
-#     y[y==0] = 1
-    
-#     ratio = y_mapped.astype(np.float64) / y.astype(np.float64)
+def LutToneRgb(rgb, lut, method = 'hsv'):
+    '''
+    '''
+    # LUT Map numpy matrix: 
+    # https://stackoverflow.com/questions/14448763/is-there-a-convenient-way-to-apply-a-lookup-table-to-a-large-array-in-numpy
+    if method== 'hsv':
+        # HSV based
+        # --------------------------------------------------
+        hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
+        v = hsv[:,:,2]
+        v_mapped = lut[v]
+        return cv2.cvtColor(
+                    np.stack((hsv[:,:,0],hsv[:,:,1],v_mapped),-1), 
+                    cv2.COLOR_HSV2RGB
+                )   
+    elif method=='rgb':        
+        # Directly applied on RGB
+        #------------------------------------
+        return lut[rgb]
+    elif method=='yuv':
+        # Applied on Y only
+        n = lut.shape[0]
 
-#     u_mapped = u.astype(np.float64) * uvRatio
-#     u_mapped[u_mapped>255] = 255
-#     u_mapped = u_mapped.astype(np.uint8)
-    
-#     v_mapped = v.astype(np.float64) * uvRatio
-#     v_mapped[v_mapped>255] = 255
-#     v_mapped = v_mapped.astype(np.uint8)    
+        yuv = cv2.cvtColor(rgb, cv2.COLOR_RGB2YUV)
+        # cv2.merge and split are costly according to
+        # https://docs.opencv.org/3.0-beta/doc/py_tutorials/py_core/py_basic_ops/py_basic_ops.html        
+        y, u, v = cv2.split(yuv)  # costly operation        
+        y_mapped = lut[y]
 
-#     # cv2.merge and split are costly according to
-#     # https://docs.opencv.org/3.0-beta/doc/py_tutorials/py_core/py_basic_ops/py_basic_ops.html
-#     return cv2.cvtColor(cv2.merge((y_mapped, u_mapped, v_mapped),-1), cv2.COLOR_YUV2RGB)
-#     #return cv2.cvtColor(cv2.merge((y_mapped, u, v),-1), cv2.COLOR_YUV2RGB)
-    hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
-    v = hsv[:,:,2]
-    v_mapped = lut[v]
-    return cv2.cvtColor(
-                np.stack((hsv[:,:,0],hsv[:,:,1],v_mapped),-1), 
-                cv2.COLOR_HSV2RGB
-            )   
+        # uvRatio = np.float64(np.sum(lut)) / np.float64( n * (n-1) /2)        
+        # # handle divide by zero
+        # y_mapped[y==0] = 1    
+        # y[y==0] = 1
+        
+        # ratio = y_mapped.astype(np.float64) / y.astype(np.float64)
+
+        # u_mapped = u.astype(np.float64) * uvRatio
+        # u_mapped[u_mapped>255] = 255
+        # u_mapped = u_mapped.astype(np.uint8)
+        
+        # v_mapped = v.astype(np.float64) * uvRatio
+        # v_mapped[v_mapped>255] = 255
+        # v_mapped = v_mapped.astype(np.uint8)    
+
+        #return cv2.cvtColor(cv2.merge((y_mapped, u_mapped, v_mapped),-1), cv2.COLOR_YUV2RGB)
+        return cv2.cvtColor(cv2.merge((y_mapped, u, v),-1), cv2.COLOR_YUV2RGB)
+    else:
+        print('Error in LutToneRgb: the specified gamma method \'{}\' is unknown'.format(method))
+        return None
 
 def GammaToneMappingLut(gamma, maxVal = 255):
     '''
