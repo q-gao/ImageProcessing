@@ -1,14 +1,19 @@
 classdef PlotImageUtil < handle
     methods(Static)
-        function ShowImageTight( cImgs, valueRange, layout)
+        function ShowImageTight( cImgs, valueRange, rot, layout)
             numImg = length(cImgs);
             if nargin < 2, valueRange = []; end
-            if nargin < 3, layout = [1, numImg]; end
+            if nargin < 3, rot = 0; end
+            if nargin < 4, layout = [1, numImg]; end
 
             figure;
             for iid = 1: numImg
                 subplottight(layout(1), layout(2), iid);
-                imshow(cImgs{iid}, valueRange, 'border', 'tight');
+                if rot == 0
+                    imshow(cImgs{iid}, valueRange, 'border', 'tight');
+                else
+                    imshow(rot90(cImgs{iid}, rot), valueRange, 'border', 'tight');
+                end
             end
         end
         function PlotGridInCurAxis_2( numCellLine, gridColor)

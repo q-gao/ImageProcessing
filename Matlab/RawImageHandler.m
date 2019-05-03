@@ -1,5 +1,31 @@
 classdef RawImageHandler < handle
     methods (Static)
+        function rgb = RgbFromDng(dngFile, linearRgb, wb)
+            %%
+            % Input:
+            %   - wb: white-balance or not
+            %   - linearRgb: linear RGB or not
+            %%
+            if nargin < 2, linearRgb = 0; end
+            if nargin < 3, wb = 1; end
+            
+            % dngFile -> uint16 RAW
+            [bayerRaw, dngInfo, ~] = RawImageHandler.LoadDng(dngFile, 1); % 1 to remove black
+            if wb
+                bayerRaw = RawImageHandler.WhiteBalanceBayerRaw(bayerRaw, dngInfo);
+            end
+            
+            % uint16 RAW -> [0 1] double sensor RGB
+            rgbSensor = RawImageHandler.DemosaicToSensorRgb(bayerRaw, dngInfo);
+            
+            % [0 1] double sensor RGB -> [0 1] double linear sRGB
+            rgb = RawImageHandler.SensorRgb2LinearSRgb(rgbSensor, dngInfo);
+            
+            if linearRgb == 0
+                rgb = lin2rgb(rgb);  % TODO: support Adobe RGB?
+            end
+        end
+        
         function VisualizeDngStat( bayers, infos )
             numDng = length(bayers);
             for i = numDng:-1:1
@@ -128,9 +154,15 @@ classdef RawImageHandler < handle
             end
             fclose(fh);            
         end        
-        function [BayerImage, Info, Label] = LoadDng(FullDngPath)            
+        function [BayerImage, Info, Label] = LoadDng(FullDngPath, removeBlack)       
+            %% Add BayerPattern_ to 'Info' for convenience     
             % see https://blogs.mathworks.com/steve/2011/03/08/tips-for-reading-a-camera-raw-file-into-matlab/
+
+            if nargin < 2
+                removeBlack = 0;
+            end
             warning off MATLAB:tifflib:TIFFReadDirectory:libraryWarning;
+
             t = Tiff(FullDngPath,'r');
             % offsets = getTag(t,'SubIFD');
             % setSubDirectory(t,offsets(1));
@@ -165,19 +197,56 @@ classdef RawImageHandler < handle
                       error('can''t handle unknown bayer pattern.');
                 end
             end
+            Info.BayerPattern_ = Label.BayerPattern;
 
             Label.Info = Info;            
+
+            % TODO: linearize the data if necessary
+            if removeBlack
+                blk = Info.BlackLevel(1);  % Assume all channels have the same black level                
+                % Note that in MATLAB uint16(63) - 64 = 0
+                BayerImage = BayerImage - blk;
+            end
         end
-        function wbRggb = WhiteBalanceRggb( rggb, exif)
-            wbMulti = exif.AsShotNeutral .^-1;
-            wbMulti = wbMulti / wbMulti(2);  % Green should be 1
-            wbRggb = double(rggb) .* RawImageHandler.WhiteBlanceMask(...
-                                size(rggb,1),size(rggb,2), ...
-                                wbMulti, 'rggb' ...
-                            );
+              
+        function rgbSensor = DemosaicToSensorRgb( bayerWb, dngInfo)
+            %% demosaiced to sensor RGB in the range of [0 1]
+            % Input:
+            %   - bayerWb (double): white-balanced bayer
+            % Return: 
+            %   - rgbSensor (double): [0 1], in sensor RGB space
+            %
+            % MATLAB built-in demosaic() function requires a uint8 or uint16 input. 
+            % To get a meaningful integer image, scale the entire image so that the 
+            % max value is 65535. Then scale back to 0-1 
+            %temp = uint16( bayerWb / max( bayerWb(:) ) * 2^16 );      
+            maxVal = double(dngInfo.WhiteLevel - dngInfo.BlackLevel(1));
+            temp = uint16( double(bayerWb) / maxVal * 2^16 );                    
+            rgbSensor = double(demosaic(temp, dngInfo.BayerPattern_) ) / 2^16;
         end
-        
-        function cam2sRGB_matrix = CalcCam2sRGBMatrix( exif )
+
+        function lSRgb = SensorRgb2LinearSRgb(rgbSensor, exif)            
+            %%
+            % Applies CMATRIX to RGB input IM. Finds the appropriate weighting of the
+            % old color planes to form the new color planes, equivalent to but much
+            % more efficient than applying a matrix transformation to each pixel.            
+            %
+            % Input:
+            %   - rgbSensor (double): in the range of [0 1]
+            %%
+            cmatrix = RawImageHandler.CalcSensorRgb2LinearsRGBMatrix(exif);
+
+            if size(rgbSensor,3) ~= 3
+                error('Apply cmatrix to RGB image only.');
+            end
+            r = cmatrix(1,1)*rgbSensor(:,:,1)+cmatrix(1,2)*rgbSensor(:,:,2)+cmatrix(1,3)*rgbSensor(:,:,3);
+            g = cmatrix(2,1)*rgbSensor(:,:,1)+cmatrix(2,2)*rgbSensor(:,:,2)+cmatrix(2,3)*rgbSensor(:,:,3);
+            b = cmatrix(3,1)*rgbSensor(:,:,1)+cmatrix(3,2)*rgbSensor(:,:,2)+cmatrix(3,3)*rgbSensor(:,:,3);
+            lSRgb = cat(3,r,g,b);            
+        end
+
+        function cam2sRGB_matrix = CalcSensorRgb2LinearsRGBMatrix( exif )
+            %% 
             % see Adobe DNG spec: https://www.adobe.com/content/dam/acom/en/products/photoshop/pdfs/dng_spec_1.4.0.0.pdf
             %  Chapter 6: Mapping Camera Color Space to CIE XYZ Color Space
             sRGB2xyz = [0.4124564 0.3575761 0.1804375; ...
@@ -193,17 +262,36 @@ classdef RawImageHandler < handle
             % This requires normalizing each row
             cam2sRGB_matrix = cam2sRGB_matrix ./ repmat(cam2sRGB_matrix * [ 1 1 1]', 1, 3);            
         end
+
+        function wbRggb = WhiteBalanceBayerRaw( rggb, exif)
+            % Output:
+            %   - wbRggb (uint16 or uint8)
+            wbMulti = exif.AsShotNeutral .^-1;
+            wbMulti = wbMulti / wbMulti(2);  % Green should be 1
+            wbRggb = double(rggb) .* RawImageHandler.WhiteBlanceMask(...
+                                size(rggb,1),size(rggb,2), ...
+                                wbMulti, exif.BayerPattern_ ...
+                            );
+            if exif.WhiteLevel > 255
+                wbRggb = uint16(wbRggb);
+            else
+                wbRggb = uint8(wbRggb);
+            end
+            maxVal = exif.WhiteLevel - exif.BlackLevel(1); % TODO: assume all channels have the same black
+            wbRggb(wbRggb > maxVal) = maxVal;
+        end        
+
         function colormask = WhiteBlanceMask(m,n,wbmults,align)
             % COLORMASK = wbmask(M,N,WBMULTS,ALIGN)
             %
             % Makes a white-balance multiplicative mask for an image of size m-by-n
             % with RGB while balance multipliers WBMULTS = [R_scale G_scale B_scale].
-            % ALIGN is string indicating Bayer arrangement: ¡¯rggb¡¯,¡¯gbrg¡¯,¡¯grbg¡¯,¡¯bggr¡¯
+            % ALIGN is string indicating Bayer arrangement:rggb,gbrg,grbg,bggr
             % 
             % Example:
             %   wb_multipliers = (meta_info.AsShotNeutral).?-1;
             %   wb_multipliers = wb_multipliers/wb_multipliers(2);
-            %   mask = WhiteBlanceMask(size(lin_bayer,1),size(lin_bayer,2),wb_multipliers,¡¯rggb¡¯);
+            %   mask = WhiteBlanceMask(size(lin_bayer,1),size(lin_bayer,2),wb_multipliers,ï¿½ï¿½rggbï¿½ï¿½);
             %   balanced_bayer = lin_bayer .* mask;            
             
             colormask = wbmults(2)*ones(m,n); %Initialize to all green values
