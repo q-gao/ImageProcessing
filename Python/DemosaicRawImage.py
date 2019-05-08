@@ -6,9 +6,23 @@ import imageio
 import numpy as np
 import os
 import re
+import pyexifinfo
 import ToneMapping as TM
 
-def DomasicRawImage(dngTemplate, rawFile, gammas=[1.0], method = 'hsv',
+def GetDngNumBits( dngFile ):
+    '''
+    Get number of bits per pixel in the dngFile
+    '''
+    exif = pyexifinfo.get_json(dngFile)
+    white = exif[0]['EXIF:WhiteLevel']
+    nbits = 1
+    while True:
+        if (1 << nbits) >= white:
+            break
+        nbits += 1
+    return nbits
+
+def DomasicRawImage(dngTemplate, dngNbits, rawFile, gammas=[1.0], method = 'hsv',
                     nab = True,
                     black_correction = 0
     ):
@@ -26,10 +40,12 @@ def DomasicRawImage(dngTemplate, rawFile, gammas=[1.0], method = 'hsv',
         m = re.search(r'(\d+)$', fext)
         if m:
             nbits = int(m.group(1))
-            if nbits > 10:
-                raw >>= (nbits-10);
-            elif nbits < 10:
-                raw <<= (10-nbits);
+            if nbits > dngNbits:
+                dn = nbits-dngNbits
+                raw = (raw  + (1 << (dn-1) ) ) >> dn
+            elif nbits < dngNbits:
+                dn = dngNbits-nbits
+                raw = (raw  + (1 << (dn-1) ) ) << dn
 
         raw = raw.reshape(dng.sizes.raw_height, dng.sizes.raw_width)
         np.copyto(dngTemplate.raw_image, raw)
@@ -95,13 +111,15 @@ if __name__ == '__main__':
     #     for i in xrange( len(dng.black_level_per_channel)):
     #         dng.black_level_per_channel[i] += args.black_level_correction
 
+    dngNbits = GetDngNumBits(args.dng_tmplt_file)
+    print('Pixel bit number in {}: {}'.format(args.dng_tmplt_file, dngNbits))
     try:    
         gspec = ''
         for g in args.gammas:
             gspec += '_{}'.format(g)
 
         for rawFile in lRawFiles:
-            rgb = DomasicRawImage(dng, rawFile, args.gammas, args.gamma_method, 
+            rgb = DomasicRawImage(dng, dngNbits, rawFile, args.gammas, args.gamma_method, 
                                     not args.auto_bright,
                                     args.black_level_correction
                     )
