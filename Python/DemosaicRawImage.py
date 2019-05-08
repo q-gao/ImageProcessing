@@ -101,7 +101,10 @@ if __name__ == '__main__':
             gspec += '_{}'.format(g)
 
         for rawFile in lRawFiles:
-            rgb = DomasicRawImage(dng, rawFile, args.gammas, args.gamma_method, not args.auto_bright)
+            rgb = DomasicRawImage(dng, rawFile, args.gammas, args.gamma_method, 
+                                    not args.auto_bright,
+                                    args.black_level_correction
+                    )
             imgFile = '{}.gamma{}_{}.{}'.format(rawFile, gspec, args.gamma_method,args.img_type)
             print('Saving demosaiced {} to {} ...\n'.format( rawFile, imgFile))
             imageio.imsave(imgFile, rgb)
