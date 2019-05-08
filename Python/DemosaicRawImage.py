@@ -45,7 +45,7 @@ if __name__ == '__main__':
                         help="list of raw files")    
     parser.add_argument("-t", "--img_type", default='tiff',
                         help="output image type, e.g., jpg, tiff and etc. Default tiff")    
-    parser.add_argument("-m", "--gamma_methd", default='hsv',
+    parser.add_argument("-m", "--gamma_method", default='hsv',
                         help="How to apply gamma: hsv, rgb, yuv")                            
     parser.add_argument("-g", "--gammas", nargs='+', type=float, default=[1.0],
                         help="list of gammas for gamma correction to brighten image. Multiple gamma can be specified so that multiple rounds gamma corrections can be applied"
@@ -85,8 +85,8 @@ if __name__ == '__main__':
             gspec += '_{}'.format(g)
 
         for rawFile in lRawFiles:
-            rgb = DomasicRawImage(dng, rawFile, args.gammas, args.gamma_methd, not args.auto_bright)
-            imgFile = '{}.gamma{}_{}.{}'.format(rawFile, gspec, args.gamma_methd,args.img_type)
+            rgb = DomasicRawImage(dng, rawFile, args.gammas, args.gamma_method, not args.auto_bright)
+            imgFile = '{}.gamma{}_{}.{}'.format(rawFile, gspec, args.gamma_method,args.img_type)
             print('Saving demosaiced {} to {} ...\n'.format( rawFile, imgFile))
             imageio.imsave(imgFile, rgb)
 

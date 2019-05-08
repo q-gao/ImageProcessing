@@ -7,7 +7,7 @@ def LutToneRgb(rgb, lut, method = 'hsv'):
     '''
     # LUT Map numpy matrix: 
     # https://stackoverflow.com/questions/14448763/is-there-a-convenient-way-to-apply-a-lookup-table-to-a-large-array-in-numpy
-    if method== 'hsv':
+    if method.lower() == 'hsv':
         # HSV based
         # --------------------------------------------------
         hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
@@ -17,11 +17,11 @@ def LutToneRgb(rgb, lut, method = 'hsv'):
                     np.stack((hsv[:,:,0],hsv[:,:,1],v_mapped),-1), 
                     cv2.COLOR_HSV2RGB
                 )   
-    elif method=='rgb':        
+    elif method.lower() =='rgb':        
         # Directly applied on RGB
         #------------------------------------
         return lut[rgb]
-    elif method=='yuv':
+    elif method.lower() =='yuv':
         # Applied on Y only
         n = lut.shape[0]
 
