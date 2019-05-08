@@ -8,10 +8,20 @@ import os
 import re
 import ToneMapping as TM
 
-def DomasicRawImage(dngTemplate, rawFile, gammas=[1.0], method = 'hsv', nab = True):
+def DomasicRawImage(dngTemplate, rawFile, gammas=[1.0], method = 'hsv',
+                    nab = True,
+                    black_correction = 0
+    ):
     try:
         raw = np.fromfile(rawFile, dtype=np.uint16)
-        
+
+        if black_correction != 0:
+            if black_correction < 0:
+                black_correction = abs(black_correction)
+                raw += black_correction
+            else:
+                raw -= black_correction
+
         fext = os.path.splitext(rawFile)[1]
         m = re.search(r'(\d+)$', fext)
         if m:
@@ -52,9 +62,9 @@ if __name__ == '__main__':
                         )    
     parser.add_argument("-a", "--auto_bright", action='store_true', default=False,
                         help="Auto brightening during demosaicing or not")    
-
-    args = parser.parse_args()  
-
+    parser.add_argument("-k", "--black_level_correction", type=int, default=0,
+                        help="correction applied on the black level read from dng template")
+    args = parser.parse_args()
 
     if os.name == 'nt':
         import glob
@@ -75,9 +85,15 @@ if __name__ == '__main__':
 
     try:
         dng = rawpy.imread(args.dng_tmplt_file)
-    except Exception as e:        
-        print("FAILED to load ", args.dng_tmplt_file, " : ", e)
+    except Exception as e:
+        print("FAILED to load \'{}\': ".format(args.dng_tmplt_file), e)
         exit(-1)
+
+    # the following doesn't work
+    #--------------------------------------------
+    # if args.black_level_correction != 0:
+    #     for i in xrange( len(dng.black_level_per_channel)):
+    #         dng.black_level_per_channel[i] += args.black_level_correction
 
     try:    
         gspec = ''
@@ -85,7 +101,10 @@ if __name__ == '__main__':
             gspec += '_{}'.format(g)
 
         for rawFile in lRawFiles:
-            rgb = DomasicRawImage(dng, rawFile, args.gammas, args.gamma_methd, not args.auto_bright)
+            rgb = DomasicRawImage(dng, rawFile, args.gammas, args.gamma_methd,
+                                  not args.auto_bright,
+                                  args.black_level_correction
+                  )
             imgFile = '{}.gamma{}_{}.{}'.format(rawFile, gspec, args.gamma_methd,args.img_type)
             print('Saving demosaiced {} to {} ...\n'.format( rawFile, imgFile))
             imageio.imsave(imgFile, rgb)
