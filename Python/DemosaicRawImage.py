@@ -123,7 +123,7 @@ if __name__ == '__main__':
                                     not args.auto_bright,
                                     args.black_level_correction
                     )
-            imgFile = '{}.gamma{}_{}.{}'.format(rawFile, gspec, args.gamma_method,args.img_type)
+            imgFile = '{}.gamma{}_{}.{}'.format( os.path.basename(rawFile), gspec, args.gamma_method,args.img_type)
             print('Saving demosaiced {} to {} ...\n'.format( rawFile, imgFile))
             imageio.imsave(imgFile, rgb)
 

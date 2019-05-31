@@ -40,7 +40,7 @@ def main(args):
     for dngFile in lDngFiles:
         try:
             with rawpy.imread(dngFile) as r:
-                imgFile = dngFile + imgFileSuffix
+                imgFile = os.path.basename(dngFile) + imgFileSuffix
                 print("{} => {}".format(dngFile, imgFile))
                 rgb = r.postprocess( no_auto_bright=nab )
 
