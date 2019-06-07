@@ -5,12 +5,44 @@ classdef RawImageHandler < handle
             % Input:
             %   - wb: white-balance or not
             %   - linearRgb: linear RGB or not
-            %%
+            %
+            % Return:
+            %  RGB: double within [0 1] 
+            %%            
             if nargin < 2, linearRgb = 0; end
             if nargin < 3, wb = 1; end
             
             % dngFile -> uint16 RAW
             [bayerRaw, dngInfo, ~] = RawImageHandler.LoadDng(dngFile, 1); % 1 to remove black
+            if wb
+                bayerRaw = RawImageHandler.WhiteBalanceBayerRaw(bayerRaw, dngInfo);
+            end
+            
+            % uint16 RAW -> [0 1] double sensor RGB
+            rgbSensor = RawImageHandler.DemosaicToSensorRgb(bayerRaw, dngInfo);
+            
+            % [0 1] double sensor RGB -> [0 1] double linear sRGB
+            rgb = RawImageHandler.SensorRgb2LinearSRgb(rgbSensor, dngInfo);
+            
+            if linearRgb == 0
+                rgb = lin2rgb(rgb);  % TODO: support Adobe RGB?
+            end
+        end
+        
+        function rgb = RgbFromBayerRaw(bayerRaw, dngFile, linearRgb, wb)
+            %%
+            % Input:
+            %   - wb: white-balance or not
+            %   - linearRgb: linear RGB or not
+            %
+            % Return:
+            %  RGB: double within [0 1] 
+            %%            
+            if nargin < 3, linearRgb = 0; end
+            if nargin < 4, wb = 1; end
+            
+            % dngFile -> uint16 RAW
+            [~, dngInfo, ~] = RawImageHandler.LoadDng(dngFile, 1); % 1 to remove black
             if wb
                 bayerRaw = RawImageHandler.WhiteBalanceBayerRaw(bayerRaw, dngInfo);
             end
