@@ -36,18 +36,23 @@ def LutToneRgb(rgb, lut, method = 'hsv'):
         # y_mapped[y==0] = 1    
         # y[y==0] = 1
         
-        # ratio = y_mapped.astype(np.float64) / y.astype(np.float64)
+        ratio = y_mapped.astype(np.float32) / (y.astype(np.float32) + 1.0E-7)
 
-        # u_mapped = u.astype(np.float64) * uvRatio
+        rgbMapped = np.empty(rgb.shape, dtype = np.float32)
+        for c in range(3):
+            rgbMapped[:,:,c] = rgb[:,:,c].astype(np.float32) * ratio
+        rgbMapped[rgbMapped > 255] = 255
+        return rgbMapped.astype(np.uint8)
+        # u_mapped = (u.astype(np.float32) - 128.0) * ratio + 128.0
         # u_mapped[u_mapped>255] = 255
         # u_mapped = u_mapped.astype(np.uint8)
         
-        # v_mapped = v.astype(np.float64) * uvRatio
+        # v_mapped = (v.astype(np.float32) - 128.0) * ratio + 128.0
         # v_mapped[v_mapped>255] = 255
         # v_mapped = v_mapped.astype(np.uint8)    
 
         #return cv2.cvtColor(cv2.merge((y_mapped, u_mapped, v_mapped),-1), cv2.COLOR_YUV2RGB)
-        return cv2.cvtColor(cv2.merge((y_mapped, u, v),-1), cv2.COLOR_YUV2RGB)
+        # return cv2.cvtColor(cv2.merge((y_mapped, u, v),-1), cv2.COLOR_YUV2RGB)
     else:
         print('Error in LutToneRgb: the specified gamma method \'{}\' is unknown'.format(method))
         return None
