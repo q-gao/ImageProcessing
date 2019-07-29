@@ -37,7 +37,7 @@ classdef ExposureFusion < handle % This is critical see explanation in Run()
             pyrG{1} = cast(img, 'double');
             
             for i = 2: obj.m_numPyrLevels
-                pyrG{i} = downsample( pyrG{i-1});             
+                pyrG{i} = EF_downsample( pyrG{i-1});             
             end
         end
         function pyr = BuildLaplacianPyramidFromIntImg(obj, img)
@@ -45,11 +45,11 @@ classdef ExposureFusion < handle % This is critical see explanation in Run()
             pyr{1} = cast(img, 'double');
             
             for i = 2: obj.m_numPyrLevels
-                pyr{i} = downsample( pyr{i-1});             
+                pyr{i} = EF_downsample( pyr{i-1});             
                 % MATLAB uses a system commonly called "copy-on-write" to avoid making a copy 
                 % of the input argument inside the function workspace until or unless you modify the input argument
                 % see https://www.mathworks.com/matlabcentral/answers/152-can-matlab-pass-by-reference
-                pyr{i-1} = pyr{i-1} - upsample(pyr{i}, 2 * size(pyr{i}) - size(pyr{i-1}) ) ;
+                pyr{i-1} = pyr{i-1} - EF_upsample(pyr{i}, 2 * size(pyr{i}) - size(pyr{i-1}) ) ;
             end
         end        
         function out = Run_RGGB(obj, cBayers, aMu, aSigma, blackLevel)
@@ -87,12 +87,12 @@ classdef ExposureFusion < handle % This is critical see explanation in Run()
 
                         cLapPyrs{imgIdx}{1} = int16(cRggbs{imgIdx}(tx:2:end, ty:2:end));
                         for i = 2: obj.m_numPyrLevels
-                            cLapPyrs{imgIdx}{i} = int16(downsample( cLapPyrs{imgIdx}{i-1}));             
+                            cLapPyrs{imgIdx}{i} = int16(EF_downsample( cLapPyrs{imgIdx}{i-1}));             
                             % MATLAB uses a system commonly called "copy-on-write" to avoid making a copy 
                             % of the input argument inside the function workspace until or unless you modify the input argument
                             % see https://www.mathworks.com/matlabcentral/answers/152-can-matlab-pass-by-reference
                             cLapPyrs{imgIdx}{i-1} = cLapPyrs{imgIdx}{i-1} - ...
-                                                    int16(upsample(cLapPyrs{imgIdx}{i},...
+                                                    int16(EF_upsample(cLapPyrs{imgIdx}{i},...
                                                         2 * size(cLapPyrs{imgIdx}{i}) - size(cLapPyrs{imgIdx}{i-1})...
                                                     )) ;
                         end                        
@@ -153,7 +153,7 @@ classdef ExposureFusion < handle % This is critical see explanation in Run()
             pyrExpo{1} = exp( - D .* D ./ v );
                         
             for lvl = 2: obj.m_numPyrLevels
-                pyrExpo{lvl} = downsample( pyrExpo{lvl-1} );
+                pyrExpo{lvl} = EF_downsample( pyrExpo{lvl-1} );
             end
         end        
         function g = Run_Y( obj, varargin )
@@ -244,11 +244,11 @@ classdef ExposureFusion < handle % This is critical see explanation in Run()
 %             pyrExposedness=obj.BuildExposednessPyramid( pyr{1} );
 %             
 %             for i = 2: obj.m_numPyrLevels
-%                 pyr{i} = downsample( pyr{i-1});             
+%                 pyr{i} = EF_downsample( pyr{i-1});             
 %                 % MATLAB uses a system commonly called "copy-on-write" to avoid making a copy 
 %                 % of the input argument inside the function workspace until or unless you modify the input argument
 %                 % see https://www.mathworks.com/matlabcentral/answers/152-can-matlab-pass-by-reference
-%                 pyr{i-1} = pyr{i-1} - upsample(pyr{i}, 2 * size(pyr{i}) - size(pyr{i-1}) ) ;
+%                 pyr{i-1} = pyr{i-1} - EF_upsample(pyr{i}, 2 * size(pyr{i}) - size(pyr{i-1}) ) ;
 %             end
         end
         function [pyr, pyrExposedness] = BuildLapAndExposednessPyramidFromY(obj, Y)
@@ -258,11 +258,11 @@ classdef ExposureFusion < handle % This is critical see explanation in Run()
             pyrExposedness=obj.BuildExposednessPyramid( double(Y) );
             
             for i = 2: obj.m_numPyrLevels
-                pyr{i} = downsample( pyr{i-1});             
+                pyr{i} = EF_downsample( pyr{i-1});             
                 % MATLAB uses a system commonly called "copy-on-write" to avoid making a copy 
                 % of the input argument inside the function workspace until or unless you modify the input argument
                 % see https://www.mathworks.com/matlabcentral/answers/152-can-matlab-pass-by-reference
-                pyr{i-1} = pyr{i-1} - upsample(pyr{i}, 2 * size(pyr{i}) - size(pyr{i-1}) ) ;
+                pyr{i-1} = pyr{i-1} - EF_upsample(pyr{i}, 2 * size(pyr{i}) - size(pyr{i-1}) ) ;
             end            
         end
         function pyrExpo = BuildExposednessPyramid(obj, Y)
@@ -275,7 +275,7 @@ classdef ExposureFusion < handle % This is critical see explanation in Run()
             pyrExpo{1} = exp( - D .* D ./ v );
             
             for lvl = 2: obj.m_numPyrLevels
-                pyrExpo{lvl} = downsample( pyrExpo{lvl-1} );
+                pyrExpo{lvl} = EF_downsample( pyrExpo{lvl-1} );
             end
         end
     end
@@ -287,8 +287,8 @@ classdef ExposureFusion < handle % This is critical see explanation in Run()
             g = pyrLap{nl};
             for lvl = nl - 1: -1: 1
                 %dim = size( pyrLap{lvl} );
-                %g = upsample(g, [mod(dim(1),2), mod(dim(2),2)] ) + pyrLap{lvl};
-                up = upsample(g, 2 * size(g) - size(pyrLap{lvl}) );
+                %g = EF_upsample(g, [mod(dim(1),2), mod(dim(2),2)] ) + pyrLap{lvl};
+                up = EF_upsample(g, 2 * size(g) - size(pyrLap{lvl}) );
                 g =  up + pyrLap{lvl};
                 
                 fprintf(' G_%d min, max= %f, %f before clipping negative values\n', lvl, min(g(:)), max(g(:)));

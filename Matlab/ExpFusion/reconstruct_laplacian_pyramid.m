@@ -9,9 +9,9 @@ nlev = length(pyr);
 R = pyr{nlev};
 filter = pyramid_filter;
 for l = nlev - 1 : -1 : 1
-    % upsample, and add to current level
+    % EF_upsample, and add to current level
     odd = 2*size(R) - size(pyr{l});
-    R = pyr{l} + upsample(R,odd,filter);
+    R = pyr{l} + EF_upsample(R,odd,filter);
 %     if (l<=3)
 %         figure, subplot(2,1,1), imshow(pyr{l}); subplot(2,1,2), imshow(R);
 %         title('reconstruction');

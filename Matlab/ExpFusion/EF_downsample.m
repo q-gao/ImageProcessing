@@ -8,7 +8,7 @@
 % If image width W is odd, then the resulting image will have width (W-1)/2+1,
 % Same for height.
 
-function R = downsample(I, filter)
+function R = EF_downsample(I, filter)
 if nargin < 2
     % default: 5x5 Gaussian
     % [1 4 6 4 1]/16
