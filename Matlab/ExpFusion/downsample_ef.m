@@ -8,7 +8,8 @@
 % If image width W is odd, then the resulting image will have width (W-1)/2+1,
 % Same for height.
 
-function R = downsample(I, filter)
+function R = downsample_ef(I, filter)
+% Rename it to avoid confusion with MATLAB's own downsample
 if nargin < 2
     % default: 5x5 Gaussian
     % [1 4 6 4 1]/16

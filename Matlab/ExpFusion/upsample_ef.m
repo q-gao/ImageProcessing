@@ -9,7 +9,7 @@
 % If image width W is odd, then the resulting image will have width (W-1)/2+1,
 % Same for height.
 
-function R = upsample(I,odd,filter)
+function R = upsample_ef(I,odd,filter)
 if nargin < 3
     filter = [.0625, .25, .375, .25, .0625];
 end

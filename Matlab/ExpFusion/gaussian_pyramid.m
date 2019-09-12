@@ -24,6 +24,6 @@ pyr{1} = I;
 % recursively downsample the image
 filter = pyramid_filter;
 for l = 2:nlev
-    I = downsample(I,filter);
+    I = downsample_ef(I,filter);
     pyr{l} = I;
 end
