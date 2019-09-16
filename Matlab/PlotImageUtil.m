@@ -1,10 +1,10 @@
 classdef PlotImageUtil < handle
     methods(Static)
-        function ShowImageTight( cImgs, valueRange, rot, layout)
+        function ShowImageTight( cImgs, layout, valueRange, rot)
             numImg = length(cImgs);
-            if nargin < 2, valueRange = []; end
-            if nargin < 3, rot = 0; end
-            if nargin < 4, layout = [1, numImg]; end
+            if nargin < 2, layout = [1, numImg]; end            
+            if nargin < 3, valueRange = []; end
+            if nargin < 4, rot = 0; end
 
             figure;
             for iid = 1: numImg

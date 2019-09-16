@@ -21,7 +21,7 @@ end
 pyr = cell(nlev,1);
 pyr{1} = I;
 
-% recursively downsample the image
+% recursively EF_downsample the image
 filter = pyramid_filter;
 for l = 2:nlev
     I = downsample_ef(I,filter);
